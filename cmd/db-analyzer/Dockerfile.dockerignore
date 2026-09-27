@@ -1,0 +1,7 @@
+# Build context is the repo root; send only what this image needs.
+*
+!core/
+!services/mongoanalyzer/
+!cmd/db-analyzer/
+**/.env
+**/output/

@@ -1,0 +1,12 @@
+# db-analyzer configuration. Values in .env and real environment variables
+# override these; see README.md for how keys map to variable names.
+appEnv: dev
+mongo:
+  uri: mongodb://localhost:27017
+  database: ynm_crawler
+  collection: threads_posts
+outputDir: ../../output/testing
+queryTimeout: 20s
+scriptTimeout: 3m
+sampleSize: 500
+explainLimit: 100

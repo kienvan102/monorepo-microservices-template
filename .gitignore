@@ -1,0 +1,40 @@
+# Whitelist-style .gitignore: everything is ignored by default,
+# then explicitly allowed back in. When adding a new file type or
+# path, add a rule here instead of relying on default tracking.
+# Git applies these rules in order, so later rules win.
+
+# Ignore everything...
+*
+
+# ...but allow traversal into directories so nested rules below can match.
+!*/
+
+# Local/secret/generated content: keep ignored no matter what
+# broader rule below would otherwise allow it back in.
+.env
+.env.*
+output/
+
+# Source code and Go tooling
+!*.go
+!go.mod
+!go.sum
+!go.work
+!go.work.sum
+
+# Scripts used by the analyzer
+# !*.js
+# !*.json
+
+# Config and docs
+!*.yaml
+!*.yml
+!*.md
+!Makefile
+!Dockerfile
+!*.dockerignore
+!.gitignore
+
+# Env templates only, re-allowed after the blanket .env* ignore above
+!.env.example
+!.env.*.example
