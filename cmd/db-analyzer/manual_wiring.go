@@ -3,8 +3,8 @@ package main
 // Uncomment after deleting wire.go and wire_gen.go: they also define Initialize.
 //
 // import (
-// 	"github.com/kienvan102/monorepo-microservices-template/core/jsonfile"
-// 	"github.com/kienvan102/monorepo-microservices-template/core/logger"
+// 	"github.com/kienvan102/monorepo-microservices-template/commonlib/jsonfile"
+// 	"github.com/kienvan102/monorepo-microservices-template/commonlib/logger"
 // 	"github.com/kienvan102/monorepo-microservices-template/services/mongoanalyzer/business"
 // 	"github.com/kienvan102/monorepo-microservices-template/services/mongoanalyzer/jsrunner"
 // 	"github.com/kienvan102/monorepo-microservices-template/services/mongoanalyzer/repository/mongodb"

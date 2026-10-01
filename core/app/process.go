@@ -11,7 +11,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/kienvan102/monorepo-microservices-template/core/processor"
+	"github.com/kienvan102/monorepo-microservices-template/commonlib/processor"
 )
 
 var errComponentFailed = errors.New("another component failed")

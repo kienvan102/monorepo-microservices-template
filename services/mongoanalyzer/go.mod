@@ -3,8 +3,9 @@ module github.com/kienvan102/monorepo-microservices-template/services/mongoanaly
 go 1.27.1
 
 require (
-	go.mongodb.org/mongo-driver/v2 v2.8.1
+	github.com/kienvan102/monorepo-microservices-template/commonlib v0.0.0
 	github.com/kienvan102/monorepo-microservices-template/core v0.0.0
+	go.mongodb.org/mongo-driver/v2 v2.8.1
 )
 
 require (
@@ -26,3 +27,5 @@ require (
 )
 
 replace github.com/kienvan102/monorepo-microservices-template/core => ../../core
+
+replace github.com/kienvan102/monorepo-microservices-template/commonlib => ../../commonlib

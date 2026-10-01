@@ -4,6 +4,7 @@ go 1.27.1
 
 require (
 	github.com/google/wire v0.7.0
+	github.com/kienvan102/monorepo-microservices-template/commonlib v0.0.0
 	github.com/kienvan102/monorepo-microservices-template/core v0.0.0
 	github.com/kienvan102/monorepo-microservices-template/services/mongoanalyzer v0.0.0
 )
@@ -36,3 +37,5 @@ replace github.com/kienvan102/monorepo-microservices-template/core => ../../core
 replace github.com/kienvan102/monorepo-microservices-template/services/mongoanalyzer => ../../services/mongoanalyzer
 
 tool github.com/google/wire/cmd/wire
+
+replace github.com/kienvan102/monorepo-microservices-template/commonlib => ../../commonlib

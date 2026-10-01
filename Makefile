@@ -1,6 +1,6 @@
 # Monorepo root. Each deployment owns its targets in cmd/<name>/Makefile,
 # pulled in below, so adding a deployment never requires editing this file.
-MODULES := $(patsubst %/go.mod,%,$(wildcard core/go.mod services/*/go.mod cmd/*/go.mod))
+MODULES := $(patsubst %/go.mod,%,$(wildcard commonlib/go.mod core/go.mod services/*/go.mod cmd/*/go.mod))
 
 .PHONY: tidy
 

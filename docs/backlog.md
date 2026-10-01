@@ -6,7 +6,7 @@ Outstanding issues for the project, ordered by priority. Each entry has: what th
 
 ### Missing automated tests
 
-- **Problem:** `core/config`, `core/app`, `core/mongoclient`, and `core/processor` have tests; everything else — both `services/mongoanalyzer` and `cmd/db-analyzer` — still has to be checked by hand against a real MongoDB instance.
+- **Problem:** `commonlib` (`config`, `logger`, `mongoclient`, `processor`) and `core/app` have tests; everything else — both `services/mongoanalyzer` and `cmd/db-analyzer` — still has to be checked by hand against a real MongoDB instance.
 - **Impact:** a code change can easily break existing behavior without anyone noticing.
 - **How to address it:** write unit tests for the parts that don't need a real DB:
   - `jsrunner/catalog.go`: reading the plan, validating script names, checking a script matches its collection.

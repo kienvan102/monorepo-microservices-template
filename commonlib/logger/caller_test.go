@@ -9,7 +9,7 @@ import (
 
 func TestOnlyErrorHasStack(t *testing.T) {
 	var buf bytes.Buffer
-	log := NewLogger("production", WithOutput(&buf))
+	log := NewLogger(WithOutput(&buf))
 
 	log.Warn("slow")
 	if _, ok := decode(t, &buf)["stack"]; ok {
@@ -39,7 +39,7 @@ func TestOnlyErrorHasStack(t *testing.T) {
 
 func TestConsoleLayout(t *testing.T) {
 	var buf bytes.Buffer
-	log := NewLogger("dev", WithOutput(&buf))
+	log := NewLogger(WithFormat(FormatConsole), WithOutput(&buf))
 
 	line := nextLine()
 	log.Error("script failed", "script", "stats")

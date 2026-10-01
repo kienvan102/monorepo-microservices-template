@@ -10,8 +10,8 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/kienvan102/monorepo-microservices-template/core/config"
-	"github.com/kienvan102/monorepo-microservices-template/core/logger"
+	"github.com/kienvan102/monorepo-microservices-template/commonlib/config"
+	"github.com/kienvan102/monorepo-microservices-template/commonlib/logger"
 )
 
 // Runtime is what every component receives from the process, whatever
@@ -122,7 +122,7 @@ func (s *sources) runtime() (Runtime, error) {
 	if err != nil {
 		return Runtime{}, err
 	}
-	return Runtime{AppEnv: pc.AppEnv, Log: logger.NewLogger(pc.AppEnv, s.logOpts...)}, nil
+	return Runtime{AppEnv: pc.AppEnv, Log: newLogger(pc.AppEnv, s.logOpts)}, nil
 }
 
 func flagName(prefix, name string) string {

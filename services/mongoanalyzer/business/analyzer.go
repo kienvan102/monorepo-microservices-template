@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kienvan102/monorepo-microservices-template/core/jsonfile"
-	"github.com/kienvan102/monorepo-microservices-template/core/logger"
+	"github.com/kienvan102/monorepo-microservices-template/commonlib/jsonfile"
+	"github.com/kienvan102/monorepo-microservices-template/commonlib/logger"
 	"github.com/kienvan102/monorepo-microservices-template/services/mongoanalyzer/entity"
 	"github.com/kienvan102/monorepo-microservices-template/services/mongoanalyzer/settings"
 )

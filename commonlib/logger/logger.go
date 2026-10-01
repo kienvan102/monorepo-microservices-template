@@ -16,13 +16,12 @@ type Logger interface {
 	Error(msg string, args ...any)
 }
 
-// NewLogger builds the logger for envType: console at debug level for
-// development and testing, JSON at info level for staging and production,
-// written to stderr. opts override any of these. JSON written to a terminal
-// is colored for reading; written anywhere else, or with NO_COLOR set, it
-// stays plain so log backends can parse it.
-func NewLogger(envType string, opts ...Option) Logger {
-	o := defaultOptions(envType)
+// NewLogger builds a logger that writes JSON at info level to stderr unless
+// opts say otherwise. JSON written to a terminal is colored for reading;
+// written anywhere else, or with NO_COLOR set, it stays plain so log
+// backends can parse it.
+func NewLogger(opts ...Option) Logger {
+	o := defaultOptions()
 	for _, opt := range opts {
 		opt(&o)
 	}

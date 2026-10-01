@@ -26,7 +26,7 @@ func decode(t *testing.T, buf *bytes.Buffer) map[string]any {
 
 func TestInfoHasCallerAndMessage(t *testing.T) {
 	var buf bytes.Buffer
-	log := NewLogger("production", WithOutput(&buf))
+	log := NewLogger(WithOutput(&buf))
 
 	line := nextLine()
 	log.Info("connected", "database", "shop")

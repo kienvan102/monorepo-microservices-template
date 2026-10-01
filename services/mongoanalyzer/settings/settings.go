@@ -8,7 +8,7 @@ package settings
 import (
 	"time"
 
-	"github.com/kienvan102/monorepo-microservices-template/core/config"
+	"github.com/kienvan102/monorepo-microservices-template/commonlib/config"
 )
 
 type Config struct {

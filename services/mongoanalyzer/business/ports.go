@@ -3,7 +3,7 @@ package business
 import (
 	"context"
 
-	"github.com/kienvan102/monorepo-microservices-template/core/mongoclient"
+	"github.com/kienvan102/monorepo-microservices-template/commonlib/mongoclient"
 	"github.com/kienvan102/monorepo-microservices-template/services/mongoanalyzer/entity"
 	"github.com/kienvan102/monorepo-microservices-template/services/mongoanalyzer/settings"
 )

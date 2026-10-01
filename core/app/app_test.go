@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kienvan102/monorepo-microservices-template/core/logger"
+	"github.com/kienvan102/monorepo-microservices-template/commonlib/logger"
 )
 
 type fakeConfig struct {

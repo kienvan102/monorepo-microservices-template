@@ -3,9 +3,9 @@
 package main
 
 import (
+	"github.com/kienvan102/monorepo-microservices-template/commonlib/logger"
+	"github.com/kienvan102/monorepo-microservices-template/commonlib/processor"
 	"github.com/kienvan102/monorepo-microservices-template/core/app"
-	"github.com/kienvan102/monorepo-microservices-template/core/logger"
-	"github.com/kienvan102/monorepo-microservices-template/core/processor"
 	"github.com/kienvan102/monorepo-microservices-template/services/mongoanalyzer/transport/cli"
 )
 
@@ -36,8 +36,8 @@ func main() {
 // package main
 //
 // import (
+// 	"github.com/kienvan102/monorepo-microservices-template/commonlib/processor"
 // 	"github.com/kienvan102/monorepo-microservices-template/core/app"
-// 	"github.com/kienvan102/monorepo-microservices-template/core/processor"
 // 	"github.com/kienvan102/monorepo-microservices-template/services/mongoanalyzer/transport/cli"
 // )
 //

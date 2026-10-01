@@ -3,7 +3,6 @@ package logger
 import (
 	"io"
 	"os"
-	"strings"
 
 	"github.com/rs/zerolog"
 )
@@ -27,8 +26,8 @@ const (
 	LevelError Level = "error"
 )
 
-// Option overrides one of the defaults NewLogger derives from the
-// environment. An empty or unknown value keeps the default.
+// Option overrides one of NewLogger's defaults. An empty or unknown value
+// keeps the default.
 type Option func(*options)
 
 type options struct {
@@ -64,26 +63,9 @@ func WithOutput(w io.Writer) Option {
 	}
 }
 
-func normalizeEnvType(raw string) string {
-	switch strings.ToLower(strings.TrimSpace(raw)) {
-	case "test", "testing":
-		return "testing"
-	case "stage", "staging":
-		return "staging"
-	case "prod", "production":
-		return "production"
-	default:
-		return "development"
-	}
-}
-
-func defaultOptions(envType string) options {
-	switch normalizeEnvType(envType) {
-	case "staging", "production":
-		return options{format: FormatJSON, level: LevelInfo, out: os.Stderr}
-	default:
-		return options{format: FormatConsole, level: LevelDebug, out: os.Stderr}
-	}
+// defaultOptions are what NewLogger uses for anything opts leave unset.
+func defaultOptions() options {
+	return options{format: FormatJSON, level: LevelInfo, out: os.Stderr}
 }
 
 func zerologLevel(l Level) (zerolog.Level, bool) {

@@ -1,12 +1,14 @@
-# Build from the repo root (this deployment needs core/ and the service):
+# Build from the repo root (this deployment needs commonlib/, core/ and the service):
 #   docker build -f cmd/db-analyzer/Dockerfile -t db-analyzer .
 FROM golang:1.27 AS build
 WORKDIR /src
 ENV GOWORK=off CGO_ENABLED=0
+COPY commonlib/go.mod commonlib/go.sum commonlib/
 COPY core/go.mod core/go.sum core/
 COPY services/mongoanalyzer/go.mod services/mongoanalyzer/go.sum services/mongoanalyzer/
 COPY cmd/db-analyzer/go.mod cmd/db-analyzer/go.sum cmd/db-analyzer/
 RUN cd cmd/db-analyzer && go mod download
+COPY commonlib/ commonlib/
 COPY core/ core/
 COPY services/mongoanalyzer/ services/mongoanalyzer/
 COPY cmd/db-analyzer/ cmd/db-analyzer/

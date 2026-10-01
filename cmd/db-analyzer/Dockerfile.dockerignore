@@ -1,5 +1,6 @@
 # Build context is the repo root; send only what this image needs.
 *
+!commonlib/
 !core/
 !services/mongoanalyzer/
 !cmd/db-analyzer/

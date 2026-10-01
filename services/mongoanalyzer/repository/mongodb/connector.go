@@ -1,5 +1,5 @@
 // Package mongodb adds this analyzer's one business rule on top of the
-// generic core/mongoclient: the configured collection must exist.
+// generic commonlib/mongoclient: the configured collection must exist.
 package mongodb
 
 import (
@@ -8,7 +8,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 
-	"github.com/kienvan102/monorepo-microservices-template/core/mongoclient"
+	"github.com/kienvan102/monorepo-microservices-template/commonlib/mongoclient"
 	"github.com/kienvan102/monorepo-microservices-template/services/mongoanalyzer/settings"
 )
 
