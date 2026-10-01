@@ -1,20 +1,20 @@
 # mongoanalyzer
 
-Service chứa các script phân tích mà [`db-analyzer`](../../cmd/db-analyzer/README.md) chạy. README này dành cho người viết hoặc sửa script. Muốn chạy phân tích và đọc kết quả, xem README của `db-analyzer`.
+The service holding the analysis scripts that [`db-analyzer`](../../cmd/db-analyzer/README.md) runs. This README is for people writing or editing scripts. To run an analysis and read its results, see the `db-analyzer` README.
 
-Script nằm trong `scripts/`, viết bằng JavaScript, chạy trong `mongosh`. Chúng chỉ đọc dữ liệu, không tạo/xóa index hay sửa dữ liệu.
+Scripts live in `scripts/`, are written in JavaScript, and run inside `mongosh`. They only read data — they never create/drop indexes or modify data.
 
-## Script chung và script riêng
+## Common scripts vs. dedicated scripts
 
-**Script chung** chỉ dùng những thông tin mà collection nào cũng có, như kích thước hay danh sách index. Tên collection được lấy từ cấu hình chứ không ghi cứng trong script. Vì vậy cùng 1 script chạy được cho mọi collection. Script chung nằm trong `scripts/common/`. Ví dụ: `common/indexes` liệt kê index của collection đang được cấu hình, collection nào cũng vậy.
+**Common scripts** only use information every collection has, like its size or index list. The collection name comes from configuration, never hardcoded into the script — so the same script works for any collection. Common scripts live in `scripts/common/`. For example, `common/indexes` lists the indexes of whichever collection is currently configured, for any collection.
 
-**Script riêng** dùng tên field, điều kiện lọc hay query cụ thể của 1 collection, nên chỉ có nghĩa với đúng collection đó. Ví dụ, đếm đơn hàng theo field `status` chỉ có nghĩa với collection `orders`. Script riêng nằm trong `scripts/collections/<tên collection>/`, và chỉ được chạy khi collection đang cấu hình trùng tên thư mục đó.
+**Dedicated scripts** use a specific collection's field names, filter conditions, or queries, so they only make sense for that one collection. For example, counting orders by their `status` field only makes sense for the `orders` collection. Dedicated scripts live in `scripts/collections/<collection name>/`, and only run when the currently configured collection matches that directory's name.
 
-## Thêm script
+## Adding a script
 
-Ví dụ: thêm script riêng `status_counts` cho collection `orders`, đếm số đơn theo trạng thái.
+Example: add a dedicated script `status_counts` for the `orders` collection, counting orders by status.
 
-**1. Viết script** tại `scripts/collections/orders/status_counts.js`. Tên file bắt đầu bằng chữ cái, chỉ gồm chữ, số, `_`, `-`.
+**1. Write the script** at `scripts/collections/orders/status_counts.js`. The filename must start with a letter and contain only letters, digits, `_`, or `-`.
 
 ```javascript
 (() => {
@@ -26,46 +26,46 @@ Ví dụ: thêm script riêng `status_counts` cho collection `orders`, đếm s�
 })();
 ```
 
-Script được chạy bằng `mongosh`, trong một phiên đã kết nối sẵn tới database của `MONGO_DATABASE` (biến `db`). Vì vậy script viết giống hệt khi chạy tay trong `mongosh`.
+The script runs through `mongosh`, in a session already connected to the database named by `MONGO_DATABASE` (the `db` variable). So it's written exactly the way you'd write it when running it by hand in `mongosh`.
 
-Script nhận cấu hình qua biến `MONGO_ANALYSIS_OPTIONS`. `db-analyzer` tự điền biến này từ cấu hình của nó:
+The script receives configuration through the `MONGO_ANALYSIS_OPTIONS` variable. `db-analyzer` populates it automatically from its own configuration:
 
-| Trong script | Lấy từ biến cấu hình |
+| In the script | Comes from configuration value |
 | --- | --- |
 | `options.collection` | `MONGO_COLLECTION` |
-| `options.queryTimeoutMS` | `QUERY_TIMEOUT`, đổi ra mili giây |
+| `options.queryTimeoutMS` | `QUERY_TIMEOUT`, converted to milliseconds |
 | `options.sampleSize` | `SAMPLE_SIZE` |
 | `options.explainLimit` | `EXPLAIN_LIMIT` |
 
-Mọi thứ script in ra đều được lưu vào file kết quả:
+Everything the script prints gets saved into the result file:
 
-- Dòng bắt đầu bằng `ANALYZER_RESULT_JSON:`, theo sau là 1 object hoặc mảng JSON: giá trị đó được ghi vào field `output_json`.
-- Dòng bắt đầu bằng `ANALYZER_PROGRESS_JSON:`, theo sau là JSON: kết quả của 1 bước. Nếu script bị dừng giữa chừng, các dòng này được giữ trong field `partial_results`. Script có nhiều bước nên in dòng này sau mỗi bước.
-- Phần in ra còn lại (`print`, `printjson`...) được ghi vào field `stdout`.
+- A line starting with `ANALYZER_RESULT_JSON:`, followed by a JSON object or array: that value is written into the `output_json` field.
+- A line starting with `ANALYZER_PROGRESS_JSON:`, followed by JSON: the result of one step. If the script gets interrupted partway through, these lines are kept in the `partial_results` field. A script with multiple steps should print one of these after each step.
+- Everything else printed (`print`, `printjson`, ...) goes into the `stdout` field.
 
-Cả script chạy tối đa `SCRIPT_TIMEOUT`, quá thời gian thì bị dừng. Muốn giới hạn từng query thì truyền `maxTimeMS: options.queryTimeoutMS` vào query đó. Với `explain`, đặt `maxTimeMS` ở chính lệnh `explain`. Query quá thời gian sẽ ném lỗi và làm dừng script, nên hãy bọc các bước độc lập trong `try/catch` nếu muốn các bước sau vẫn chạy tiếp.
+The whole script runs for at most `SCRIPT_TIMEOUT`, and gets killed past that. To bound an individual query, pass `maxTimeMS: options.queryTimeoutMS` into that query. For `explain`, set `maxTimeMS` on the `explain` call itself. A query that times out throws and stops the script, so wrap independent steps in `try/catch` if you want later steps to keep running.
 
-**2. Khai script vào plan.** Plan là file JSON liệt kê các script mà `inspect`/`collect` sẽ chạy, theo đúng thứ tự trong danh sách. Có 2 loại plan:
+**2. Register the script in a plan.** A plan is a JSON file listing the scripts that `inspect`/`collect` will run, in the exact order given. There are two kinds of plan:
 
-- `scripts/plan.json`: danh sách script chung, đặt dưới key `inspect`, mỗi script ghi tên đầy đủ. `inspect` và `collect` đều chạy danh sách này.
+- `scripts/plan.json`: the list of common scripts, under the `inspect` key, each entry the script's full name. Both `inspect` and `collect` run this list.
 
   ```json
   { "inspect": ["common/collection_stats", "common/indexes"] }
   ```
 
-- `scripts/collections/<tên collection>/plan.json`: danh sách script riêng của collection, đặt dưới key `default`, mỗi script chỉ ghi tên file, không có `.js` và không có đường dẫn. `collect` chạy danh sách này sau danh sách script chung.
+- `scripts/collections/<collection name>/plan.json`: the collection's list of dedicated scripts, under the `default` key, each entry just the filename, without `.js` and without a path. `collect` runs this list after the common scripts.
 
-Với ví dụ, tạo file `scripts/collections/orders/plan.json`. Nếu file đã có thì thêm `"status_counts"` vào danh sách.
+For this example, create `scripts/collections/orders/plan.json`. If the file already exists, just add `"status_counts"` to the list.
 
 ```json
 { "default": ["status_counts"] }
 ```
 
-**3. Chạy.** Trong cấu hình của `db-analyzer`, đặt collection là `orders` (`mongo.collection` trong `config.yaml`, hoặc `MONGO_COLLECTION` trong `.env`), rồi:
+**3. Run it.** In `db-analyzer`'s configuration, set the collection to `orders` (`mongo.collection` in `config.yaml`, or `MONGO_COLLECTION` in `.env`), then:
 
 ```bash
-make db-analyzer-collect                                       # script chung, rồi tới status_counts
-make db-analyzer-run SCRIPT=collections/orders/status_counts   # chỉ chạy status_counts
+make db-analyzer-collect                                       # common scripts, then status_counts
+make db-analyzer-run SCRIPT=collections/orders/status_counts   # run only status_counts
 ```
 
-Kết quả ghi vào file `collections__orders__status_counts.json`. Script chưa khai vào plan vẫn chạy được bằng `make db-analyzer-run`. Các lệnh `make` tự build lại binary, nên script mới có hiệu lực ngay.
+The result is written to `collections__orders__status_counts.json`. A script that hasn't been registered in a plan yet can still be run with `make db-analyzer-run`. `make` commands rebuild the binary automatically, so a new script takes effect immediately.

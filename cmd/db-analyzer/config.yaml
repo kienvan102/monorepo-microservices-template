@@ -8,5 +8,5 @@ mongo:
 outputDir: ../../output/testing
 queryTimeout: 20s
 scriptTimeout: 3m
-sampleSize: 500
+sampleSize: 1000
 explainLimit: 100

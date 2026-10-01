@@ -22,6 +22,9 @@ output/
 !go.work
 !go.work.sum
 
+# Repo scripts (scripts/init-project.sh)
+!scripts/*.sh
+
 # Scripts used by the analyzer
 # !*.js
 # !*.json

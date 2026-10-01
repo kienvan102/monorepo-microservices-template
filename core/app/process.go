@@ -21,8 +21,18 @@ var errComponentFailed = errors.New("another component failed")
 // part's Run is turned into an error. If one part fails, the others' context
 // is cancelled, and the context.Canceled errors they return because of it are
 // left out of the result; the process ends when all parts have returned.
-func New(parts ...Mounted) processor.Processor {
-	return &parallel{parts: parts}
+// ProcessOptions such as WithLogger can be passed among the parts.
+func New(parts ...Part) processor.Processor {
+	p := &parallel{}
+	for _, part := range parts {
+		switch v := part.(type) {
+		case Mounted:
+			p.parts = append(p.parts, v)
+		case ProcessOption:
+			v(&p.sources)
+		}
+	}
+	return p
 }
 
 type parallel struct {
@@ -110,8 +120,12 @@ func (p *parallel) Stop() error { return nil }
 //
 // Each command parses its own flags, so 2 commands may declare the same flag
 // names; WithPrefix only affects their config here.
-func Commands(cmds map[string]Mounted) processor.Processor {
-	return &commands{cmds: cmds}
+func Commands(cmds map[string]Mounted, opts ...ProcessOption) processor.Processor {
+	c := &commands{cmds: cmds}
+	for _, opt := range opts {
+		opt(&c.sources)
+	}
+	return c
 }
 
 type commands struct {

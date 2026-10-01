@@ -1,7 +1,9 @@
 package app
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -10,6 +12,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/kienvan102/monorepo-microservices-template/core/logger"
 )
 
 type fakeConfig struct {
@@ -230,6 +234,32 @@ func TestCommands(t *testing.T) {
 		err := start(t, Commands(cmds), append([]string{"-config=", "-env-file="}, args...)...)
 		if err == nil || !strings.Contains(err.Error(), "alpha, beta") {
 			t.Errorf("args %v: want an error listing the commands, got %v", args, err)
+		}
+	}
+}
+
+func TestWithLoggerReachesRuntime(t *testing.T) {
+	var newBuf, cmdBuf bytes.Buffer
+	a := &fake{}
+	b := &fake{}
+	jsonTo := func(buf *bytes.Buffer) ProcessOption {
+		return WithLogger(logger.WithOutput(buf), logger.WithFormat(logger.FormatJSON))
+	}
+
+	if err := start(t, New(Mount[fakeConfig](a), jsonTo(&newBuf)), "-config=", "-env-file="); err != nil {
+		t.Fatal(err)
+	}
+	if err := start(t, Commands(map[string]Mounted{"beta": Mount[fakeConfig](b)}, jsonTo(&cmdBuf)), "-config=", "-env-file=", "beta"); err != nil {
+		t.Fatal(err)
+	}
+
+	for name, c := range map[string]struct {
+		f   *fake
+		buf *bytes.Buffer
+	}{"New": {a, &newBuf}, "Commands": {b, &cmdBuf}} {
+		c.f.rt.Log.Debug("hello")
+		if !json.Valid(c.buf.Bytes()) || !strings.Contains(c.buf.String(), `"message":"hello"`) {
+			t.Errorf("%s: want the JSON entry in the WithLogger output at the dev default level, got %q", name, c.buf.String())
 		}
 	}
 }

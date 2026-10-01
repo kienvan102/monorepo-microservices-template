@@ -81,9 +81,30 @@ func Mount[C any](c Component[C], opts ...MountOption) Mounted {
 	return m
 }
 
-// sources are the config files named by -config and -env-file.
+// Part is what New takes: a Mounted component or a ProcessOption.
+type Part interface {
+	part()
+}
+
+func (Mounted) part() {}
+
+// ProcessOption adjusts the process itself rather than one component. Pass
+// it to New among the components, or to Commands after the commands.
+type ProcessOption func(*sources)
+
+func (ProcessOption) part() {}
+
+// WithLogger passes opts to the logger every component receives as
+// Runtime.Log. Whatever opts leave unset keeps its APP_ENV default.
+func WithLogger(opts ...logger.Option) ProcessOption {
+	return func(s *sources) { s.logOpts = append(s.logOpts, opts...) }
+}
+
+// sources are the config files named by -config and -env-file, and the
+// process options that shape the Runtime built from them.
 type sources struct {
 	yaml, env string
+	logOpts   []logger.Option
 }
 
 func (s *sources) initFlags(fs *flag.FlagSet) {
@@ -101,7 +122,7 @@ func (s *sources) runtime() (Runtime, error) {
 	if err != nil {
 		return Runtime{}, err
 	}
-	return Runtime{AppEnv: pc.AppEnv, Log: logger.NewLogger(pc.AppEnv)}, nil
+	return Runtime{AppEnv: pc.AppEnv, Log: logger.NewLogger(pc.AppEnv, s.logOpts...)}, nil
 }
 
 func flagName(prefix, name string) string {

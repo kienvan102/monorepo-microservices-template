@@ -1,8 +1,8 @@
 package logger
 
 import (
-	"os"
-	"strings"
+	"runtime"
+	"strconv"
 
 	"github.com/rs/zerolog"
 )
@@ -16,43 +16,59 @@ type Logger interface {
 	Error(msg string, args ...any)
 }
 
-func normalizeEnvType(raw string) string {
-	switch strings.ToLower(strings.TrimSpace(raw)) {
-	case "test", "testing":
-		return "testing"
-	case "stage", "staging":
-		return "staging"
-	case "prod", "production":
-		return "production"
-	default:
-		return "development"
+// NewLogger builds the logger for envType: console at debug level for
+// development and testing, JSON at info level for staging and production,
+// written to stderr. opts override any of these. JSON written to a terminal
+// is colored for reading; written anywhere else, or with NO_COLOR set, it
+// stays plain so log backends can parse it.
+func NewLogger(envType string, opts ...Option) Logger {
+	o := defaultOptions(envType)
+	for _, opt := range opts {
+		opt(&o)
 	}
-}
 
-func NewLogger(envType string) Logger {
-	var zl zerolog.Logger
-	switch normalizeEnvType(envType) {
-	case "staging", "production":
-		zl = zerolog.New(os.Stderr).Level(zerolog.InfoLevel).With().Timestamp().Logger()
-	default:
-		console := zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "2006-01-02T15:04:05.000Z07:00"}
-		zl = zerolog.New(console).Level(zerolog.DebugLevel).With().Timestamp().Logger()
+	out := o.out
+	switch {
+	case o.format == FormatJSON && isColorTerminal(o.out):
+		out = colorJSONWriter{out: o.out}
+	case o.format == FormatConsole:
+		out = zerolog.ConsoleWriter{
+			Out:           o.out,
+			TimeFormat:    "2006-01-02T15:04:05.000Z07:00",
+			FieldsExclude: []string{zerolog.ErrorStackFieldName},
+			FormatExtra:   writeConsoleStack,
+		}
 	}
-	return zerologLogger{logger: zl}
+	level, _ := zerologLevel(o.level)
+	return zerologLogger{logger: zerolog.New(out).Level(level).With().Timestamp().Logger()}
 }
 
 type zerologLogger struct {
 	logger zerolog.Logger
 }
 
-func (z zerologLogger) Debug(msg string, args ...any) { z.emit(z.logger.Debug(), msg, args) }
-func (z zerologLogger) Info(msg string, args ...any)  { z.emit(z.logger.Info(), msg, args) }
-func (z zerologLogger) Warn(msg string, args ...any)  { z.emit(z.logger.Warn(), msg, args) }
-func (z zerologLogger) Error(msg string, args ...any) { z.emit(z.logger.Error(), msg, args) }
+func (z zerologLogger) Debug(msg string, args ...any) { z.emit(z.logger.Debug(), msg, args, false) }
+func (z zerologLogger) Info(msg string, args ...any)  { z.emit(z.logger.Info(), msg, args, false) }
+func (z zerologLogger) Warn(msg string, args ...any)  { z.emit(z.logger.Warn(), msg, args, false) }
+func (z zerologLogger) Error(msg string, args ...any) { z.emit(z.logger.Error(), msg, args, true) }
 
 // emit maps the "key, value, key, value..." args every call site already
 // passes into zerolog fields, so nothing outside this file had to change.
-func (z zerologLogger) emit(event *zerolog.Event, msg string, args []any) {
+// It must be called directly from the level methods: the caller and stack
+// are found by skipping exactly emit and that method.
+func (z zerologLogger) emit(event *zerolog.Event, msg string, args []any, withStack bool) {
+	if event == nil { // level disabled
+		return
+	}
+	if pc, file, line, ok := runtime.Caller(2); ok {
+		event = event.Str(zerolog.CallerFieldName, shortFile(file)+":"+strconv.Itoa(line))
+		if fn := runtime.FuncForPC(pc); fn != nil {
+			event = event.Str(funcFieldName, shortFunc(fn.Name()))
+		}
+	}
+	if withStack {
+		event = event.Strs(zerolog.ErrorStackFieldName, callerStack(4))
+	}
 	for i := 0; i+1 < len(args); i += 2 {
 		key, ok := args[i].(string)
 		if !ok {

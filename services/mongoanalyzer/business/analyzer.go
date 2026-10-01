@@ -85,7 +85,7 @@ func (a *Analyzer) runPlan(ctx context.Context, group string) error {
 // executeAndReport runs each script, writes its result and the run
 // manifest, and returns every script's error joined together.
 func (a *Analyzer) executeAndReport(ctx context.Context, selected []string) error {
-	runDir := filepath.Join(string(a.cfg.Mongo.OutputDir), time.Now().UTC().Format("20060102T150405.000000000Z"))
+	runDir := filepath.Join(string(a.cfg.Mongo.OutputDir), a.cfg.Mongo.Collection, time.Now().UTC().Format("20060102T150405.000000000Z"))
 	manifest := entity.Manifest{CapturedAt: time.Now().UTC(), Database: a.cfg.Mongo.Database, Collection: a.cfg.Mongo.Collection, Entries: []entity.Entry{}}
 	var failures []error
 	for _, name := range selected {

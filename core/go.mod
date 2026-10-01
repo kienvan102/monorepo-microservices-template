@@ -5,6 +5,7 @@ go 1.27.1
 require (
 	github.com/caarlos0/env/v11 v11.4.1
 	github.com/joho/godotenv v1.5.1
+	github.com/mattn/go-isatty v0.0.20
 	github.com/rs/zerolog v1.35.1
 	go.mongodb.org/mongo-driver/v2 v2.8.1
 	go.yaml.in/yaml/v3 v3.0.5
@@ -13,7 +14,6 @@ require (
 require (
 	github.com/klauspost/compress v1.17.6 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
-	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.2.0 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect
