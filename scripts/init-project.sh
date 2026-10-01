@@ -14,8 +14,8 @@ usage() {
 Usage: bash scripts/init-project.sh [<new-module-path>] [--strip-examples] [--dry-run]
 
 Renames this template's Go module path to your project's. Every module in
-the repo (core/, services/*, cmd/*) is renamed to start with the new path,
-e.g. <new-module-path>/core.
+the repo (commonlib/, core/, services/*, cmd/*) is renamed to start with the
+new path, e.g. <new-module-path>/core.
 
 The path is usually your repo URL without https://, for example
   github.com/your-account/your-repo
@@ -23,7 +23,8 @@ If you leave it out, the script asks for it.
 
 Options:
   --strip-examples  also remove the example service (services/mongoanalyzer)
-                    and deployment (cmd/db-analyzer), leaving only core/
+                    and deployment (cmd/db-analyzer), leaving only
+                    commonlib/ and core/
   --dry-run         print what would change, without writing anything
   -h, --help        show this help
 EOF
@@ -171,7 +172,7 @@ echo
 echo "Checking that every module still builds..."
 build_failed=false
 # Same module set as the root Makefile's MODULES.
-for m in core services/* cmd/*; do
+for m in commonlib core services/* cmd/*; do
 	[ -f "$m/go.mod" ] || continue
 	if (cd "$m" && GOWORK=off go build ./...); then
 		echo "  ok   $m"
