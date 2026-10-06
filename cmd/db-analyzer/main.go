@@ -30,17 +30,7 @@ func main() {
 }
 
 // main.go after switching to manual_wiring.go:
-//
-// // db-analyzer is a run-once CLI deployment of the mongoanalyzer service: its
-// // CLI transport mounted on the shared process framework.
-// package main
-//
-// import (
-// 	"github.com/kienvan102/monorepo-microservices-template/commonlib/processor"
-// 	"github.com/kienvan102/monorepo-microservices-template/core/app"
-// 	"github.com/kienvan102/monorepo-microservices-template/services/mongoanalyzer/transport/cli"
-// )
-//
+
 // // main runs every mounted service at the same time (app.New). To add a
 // // service, mount it on its own line with its own prefix, as in the
 // // commented-out line (mongoanalyzer2 does not exist). Each added service also
