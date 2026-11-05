@@ -21,6 +21,9 @@ const (
 	progressPrefix = "ANALYZER_PROGRESS_JSON:"
 )
 
+// optionsGlobal is the JS global holding the options every script receives.
+const optionsGlobal = "MONGO_ANALYSIS_OPTIONS"
+
 // Runner executes analysis scripts with a real mongosh process, resolving
 // them through catalog.
 type Runner struct {
@@ -40,7 +43,7 @@ func (r *Runner) Run(ctx context.Context, name string, cfg settings.MongoConfig)
 	if err := r.catalog.ValidateTarget(name, cfg.Collection); err != nil {
 		return result, err
 	}
-	source, _, err := r.catalog.ReadSource(name)
+	resolved, err := r.catalog.Resolve(name)
 	if err != nil {
 		return result, err
 	}
@@ -57,7 +60,7 @@ func (r *Runner) Run(ctx context.Context, name string, cfg settings.MongoConfig)
 	}
 	defer os.RemoveAll(dir)
 	file := filepath.Join(dir, "script.js")
-	program, err := buildProgram(source, cfg)
+	program, err := buildProgram(resolved, cfg)
 	if err != nil {
 		return result, err
 	}
@@ -106,9 +109,12 @@ func (r *Runner) Run(ctx context.Context, name string, cfg settings.MongoConfig)
 	return result, nil
 }
 
-// buildProgram prepends the options and the database connection to the
-// script, so the script runs as if typed into a connected mongosh session.
-func buildProgram(source string, cfg settings.MongoConfig) ([]byte, error) {
+// buildProgram prepends the options, the database connection and, for a
+// group's engine, the group's items to the script, so the script runs as if
+// typed into a connected mongosh session. The items arrive in the group's
+// JS variable as an array of { name, build } in order, where build is the
+// item file: one JS expression.
+func buildProgram(resolved Resolved, cfg settings.MongoConfig) ([]byte, error) {
 	options, err := json.Marshal(map[string]any{
 		"collection":     cfg.Collection,
 		"queryTimeoutMS": cfg.QueryTimeout.Milliseconds(),
@@ -127,9 +133,20 @@ func buildProgram(source string, cfg settings.MongoConfig) ([]byte, error) {
 		return nil, err
 	}
 	var b strings.Builder
-	fmt.Fprintf(&b, "globalThis.MONGO_ANALYSIS_OPTIONS = %s;\n", options)
+	fmt.Fprintf(&b, "globalThis.%s = %s;\n", optionsGlobal, options)
 	fmt.Fprintf(&b, "db = connect(%s).getSiblingDB(%s);\n", uri, database)
-	b.WriteString(source)
+	if resolved.Global != "" {
+		fmt.Fprintf(&b, "globalThis.%s = [\n", resolved.Global)
+		for _, item := range resolved.Items {
+			name, err := json.Marshal(item.Name)
+			if err != nil {
+				return nil, err
+			}
+			fmt.Fprintf(&b, "{ name: %s, build: (\n%s\n) },\n", name, item.Source)
+		}
+		b.WriteString("];\n")
+	}
+	b.WriteString(resolved.Source)
 	b.WriteString("\n")
 	return []byte(b.String()), nil
 }

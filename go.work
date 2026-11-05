@@ -2,7 +2,9 @@ go 1.27.1
 
 use (
 	./cmd/db-analyzer
+	./cmd/crawler-monitor
 	./commonlib
 	./core
+	./services/crawlermonitor
 	./services/mongoanalyzer
 )

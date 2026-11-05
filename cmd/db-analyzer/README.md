@@ -1,6 +1,6 @@
 # db-analyzer
 
-A command-line tool that analyzes a MongoDB collection to support index design. Once it finishes, you get a directory of JSON files: each one answers a single question about the collection — for example, which indexes it currently has, or whether the application's queries actually use the right index. The tool is read-only: it never creates/drops indexes or modifies data.
+A command-line tool that analyzes a MongoDB collection to support index design. Once it finishes, you get a directory of JSON files: each one answers a single question about the collection — for example, which indexes it currently has, or whether the application's queries actually use the right index. The tool is read-only, with one exception: the on-demand script `threads_posts/monitoring_candidate_ablation` temporarily hides indexes and restores them when it finishes (see the mongoanalyzer README).
 
 ## First run
 
@@ -30,7 +30,7 @@ make db-analyzer-inspect    # common analysis: works with any collection
 make db-analyzer-collect    # common analysis + this collection's dedicated analyses
 ```
 
-`collect` only works for a collection that already has a dedicated analysis set — currently just `threads_posts`. For any other collection, `collect` fails; use `inspect` instead. On a large collection, `collect` can take a few minutes, since it counts and runs `explain` against real data — run it during low traffic if that's a production database.
+`db-analyzer` works on any collection: `inspect` runs the common analyses on whatever `mongo.collection` names. `collect` also needs a dedicated analysis set for that collection — currently `threads_posts`, `threads_replies` and `identity_crawling_7`. For any other collection, `collect` fails; use `inspect` instead. On a large collection, `collect` can take a few minutes, since it counts and runs `explain` against real data — run it during low traffic if that's a production database.
 
 **5. Read the results.** The last log line tells you the output directory:
 
@@ -52,8 +52,11 @@ Inside that directory:
 | `collections__<collection>__schema_sample.json` | What does the real data actually look like? | `field_types`: how many records are missing each field, and its type (based on a sample) |
 | `collections__<collection>__filter_selectivity.json` | How many records does each of the app's filter conditions match? | `results`: `count` per condition; the smaller it is relative to the total, the more that condition belongs in an index |
 | `collections__<collection>__workload_explain.json` | Which index does the app's query use, and is it effective? | `results`: `indexes_used`, and inside `explain.executionStats`, compare `totalDocsExamined` to `nReturned` — reading far more than is returned means the query needs a better index |
+| `collections__threads_posts__index_candidates.json` | Which of the indexes that exist is best for each query? Which are never chosen? | `queries`: per query, the `plannerIndexes`, the `best` indexes, and `candidates` ranked by `totalKeysExamined`; `indexes`: per index, `neverChosenNorBest`, `sizeBytes`, `accessOps` |
 
-The first two files exist for both `inspect` and `collect`. The last three exist only for `collect`.
+The first two files exist for both `inspect` and `collect`. The next three exist only for `collect`. The `index_candidates` file exists only when you run it: `make db-analyzer-run SCRIPT=collections/threads_posts/index_candidates`. It explains every query once per index, so it can take a long time on a large collection; raise `SCRIPT_TIMEOUT` first.
+
+In `threads_posts`, `workload_explain` explains each query twice, as `limited` (the way the app runs it, capped at `EXPLAIN_LIMIT`) and `full` (no cap). Under `full`, compare `totalKeysExamined` to `nReturned`, and read `winningPlan`. A query that failed or timed out has an `error` there instead.
 
 An analysis with `status: ok` can still have failures in individual measurements inside it — for example, one filter's count exceeding the timeout — recorded in that measurement's own `error` field.
 

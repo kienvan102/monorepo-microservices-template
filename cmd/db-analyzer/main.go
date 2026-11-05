@@ -3,7 +3,7 @@
 package main
 
 import (
-	"github.com/kienvan102/monorepo-microservices-template/commonlib/logger"
+	// "github.com/kienvan102/monorepo-microservices-template/commonlib/logger"
 	"github.com/kienvan102/monorepo-microservices-template/commonlib/processor"
 	"github.com/kienvan102/monorepo-microservices-template/core/app"
 	"github.com/kienvan102/monorepo-microservices-template/services/mongoanalyzer/transport/cli"
@@ -23,7 +23,7 @@ import (
 func main() {
 	processor.Main(app.New(
 		app.Mount(cli.NewHandler(Initialize)),
-		app.WithLogger(logger.WithFormat(logger.FormatJSON)),
+		// app.WithLogger(logger.WithFormat(logger.FormatJSON)),
 		// app.Mount(cli2.NewHandler(Initialize2), app.WithPrefix("m2")),
 	))
 	// or simply: func main() { processor.Main(app.New(app.Mount(cli.NewHandler(Initialize)))) }
