@@ -1,5 +1,5 @@
 // Package app is the process framework every deployment is built from. A
-// deployment picks how its process runs (all components together with New,
+// deployment picks how its process runs (all components together with Parallel,
 // or one chosen command with Commands) and mounts the components its
 // services provide; app does the rest: -config/-env-file flags, config
 // loading, APP_ENV and the logger, and running the components.
@@ -9,6 +9,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"runtime/debug"
 
 	"github.com/kienvan102/monorepo-microservices-template/commonlib/config"
 	"github.com/kienvan102/monorepo-microservices-template/commonlib/logger"
@@ -40,18 +41,12 @@ type Component[C any] interface {
 	Run(ctx context.Context, rt Runtime, cfg C) error
 }
 
-// MountOption adjusts how a component is mounted.
-type MountOption func(*Mounted)
-
-// WithPrefix makes the component read its config with the given prefix
-// (see config.WithPrefix: "x" reads X_... variables, YAML key x:) and, when
-// mounted with New, declare its flags as -x-<flag>. Use it when 2 mounted
-// components would otherwise read the same variable or flag name.
-func WithPrefix(name string) MountOption {
-	return func(m *Mounted) { m.prefix = name }
+// Part is what Parallel takes: a Mounted component or a ProcessOption.
+type Part interface {
+	part()
 }
 
-// Mounted is a component ready to be run by New or Commands, with its
+// Mounted is a component ready to be run by Parallel or Commands, with its
 // config type hidden so components of different services can be combined.
 type Mounted struct {
 	prefix    string
@@ -59,9 +54,7 @@ type Mounted struct {
 	load      func(files sources) (runFunc, error)
 }
 
-type runFunc func(ctx context.Context, rt Runtime) error
-
-// Mount prepares c to be run by New or Commands.
+// Mount prepares c to be run by Parallel or Commands.
 func Mount[C any](c Component[C], opts ...MountOption) Mounted {
 	m := Mounted{initFlags: c.InitFlags}
 	for _, opt := range opts {
@@ -81,15 +74,42 @@ func Mount[C any](c Component[C], opts ...MountOption) Mounted {
 	return m
 }
 
-// Part is what New takes: a Mounted component or a ProcessOption.
-type Part interface {
-	part()
-}
-
 func (Mounted) part() {}
 
+// flagName is the name the component's flag is declared under in a process
+// that runs several components: prefixed when mounted WithPrefix.
+func (m Mounted) flagName(name string) string {
+	if m.prefix == "" {
+		return name
+	}
+	return fmt.Sprintf("%s-%s", m.prefix, name)
+}
+
+// MountOption adjusts how a component is mounted.
+type MountOption func(*Mounted)
+
+// WithPrefix makes the component read its config with the given prefix
+// (see config.WithPrefix: "x" reads X_... variables, YAML key x:) and, when
+// mounted with Parallel, declare its flags as -x-<flag>. Use it when 2 mounted
+// components would otherwise read the same variable or flag name.
+func WithPrefix(name string) MountOption {
+	return func(m *Mounted) { m.prefix = name }
+}
+
+type runFunc func(ctx context.Context, rt Runtime) error
+
+// safely calls r, turning a panic into an error.
+func (r runFunc) safely(ctx context.Context, rt Runtime) (err error) {
+	defer func() {
+		if p := recover(); p != nil {
+			err = fmt.Errorf("component panicked: %v\n%s", p, debug.Stack())
+		}
+	}()
+	return r(ctx, rt)
+}
+
 // ProcessOption adjusts the process itself rather than one component. Pass
-// it to New among the components, or to Commands after the commands.
+// it to Parallel among the components, or to Commands after the commands.
 type ProcessOption func(*sources)
 
 func (ProcessOption) part() {}
@@ -122,12 +142,5 @@ func (s *sources) runtime() (Runtime, error) {
 	if err != nil {
 		return Runtime{}, err
 	}
-	return Runtime{AppEnv: pc.AppEnv, Log: newLogger(pc.AppEnv, s.logOpts)}, nil
-}
-
-func flagName(prefix, name string) string {
-	if prefix == "" {
-		return name
-	}
-	return fmt.Sprintf("%s-%s", prefix, name)
+	return Runtime{AppEnv: pc.AppEnv, Log: s.newLogger(pc.AppEnv)}, nil
 }

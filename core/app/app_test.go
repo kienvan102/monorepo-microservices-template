@@ -68,11 +68,11 @@ func writeYAML(t *testing.T, content string) string {
 	return path
 }
 
-func TestNewSingleComponent(t *testing.T) {
+func TestParallelSingleComponent(t *testing.T) {
 	yaml := writeYAML(t, "appEnv: staging\napptest:\n  uri: from-yaml\n")
 	c := &fake{flagName: "action"}
 
-	if err := start(t, New(Mount[fakeConfig](c)), "-config", yaml, "-env-file=", "-action", "check"); err != nil {
+	if err := start(t, Parallel(Mount[fakeConfig](c)), "-config", yaml, "-env-file=", "-action", "check"); err != nil {
 		t.Fatal(err)
 	}
 	if !c.ran || c.flagValue != "check" {
@@ -86,11 +86,11 @@ func TestNewSingleComponent(t *testing.T) {
 	}
 }
 
-func TestNewPrefix(t *testing.T) {
+func TestParallelPrefix(t *testing.T) {
 	yaml := writeYAML(t, "appEnv: production\napptest:\n  uri: plain\nx:\n  appEnv: ignored\n  apptest:\n    uri: prefixed\n")
 	plain := &fake{flagName: "action"}
 	prefixed := &fake{flagName: "action"}
-	p := New(Mount[fakeConfig](plain), Mount[fakeConfig](prefixed, WithPrefix("x")))
+	p := Parallel(Mount[fakeConfig](plain), Mount[fakeConfig](prefixed, WithPrefix("x")))
 
 	if err := start(t, p, "-config", yaml, "-env-file=", "-action", "a", "-x-action", "b"); err != nil {
 		t.Fatal(err)
@@ -106,10 +106,10 @@ func TestNewPrefix(t *testing.T) {
 	}
 }
 
-func TestNewDuplicateFlag(t *testing.T) {
+func TestParallelDuplicateFlag(t *testing.T) {
 	a := &fake{flagName: "action"}
 	b := &fake{flagName: "action"}
-	err := start(t, New(Mount[fakeConfig](a), Mount[fakeConfig](b)), "-config=", "-env-file=")
+	err := start(t, Parallel(Mount[fakeConfig](a), Mount[fakeConfig](b)), "-config=", "-env-file=")
 	if err == nil || !strings.Contains(err.Error(), "-action") {
 		t.Fatalf("want a duplicate flag error naming -action, got %v", err)
 	}
@@ -118,7 +118,7 @@ func TestNewDuplicateFlag(t *testing.T) {
 	}
 }
 
-func TestNewCancelsOthersOnError(t *testing.T) {
+func TestParallelCancelsOthersOnError(t *testing.T) {
 	boom := errors.New("boom")
 	failing := &fake{run: func(context.Context) error { return boom }}
 	var sawCancel bool
@@ -132,7 +132,7 @@ func TestNewCancelsOthersOnError(t *testing.T) {
 		}
 	}}
 
-	err := start(t, New(Mount[fakeConfig](failing), Mount[fakeConfig](longRunning, WithPrefix("b"))), "-config=", "-env-file=")
+	err := start(t, Parallel(Mount[fakeConfig](failing), Mount[fakeConfig](longRunning, WithPrefix("b"))), "-config=", "-env-file=")
 	if !errors.Is(err, boom) {
 		t.Fatalf("want the failing component's error, got %v", err)
 	}
@@ -141,7 +141,7 @@ func TestNewCancelsOthersOnError(t *testing.T) {
 	}
 }
 
-func TestNewRecoversPanic(t *testing.T) {
+func TestParallelRecoversPanic(t *testing.T) {
 	panicking := &fake{run: func(context.Context) error { panic("nil map") }}
 	var sawCancel bool
 	longRunning := &fake{run: func(ctx context.Context) error {
@@ -154,7 +154,7 @@ func TestNewRecoversPanic(t *testing.T) {
 		}
 	}}
 
-	err := start(t, New(Mount[fakeConfig](panicking), Mount[fakeConfig](longRunning, WithPrefix("b"))), "-config=", "-env-file=")
+	err := start(t, Parallel(Mount[fakeConfig](panicking), Mount[fakeConfig](longRunning, WithPrefix("b"))), "-config=", "-env-file=")
 	if err == nil || !strings.Contains(err.Error(), "component panicked: nil map") {
 		t.Fatalf("want the panic as an error, got %v", err)
 	}
@@ -166,15 +166,15 @@ func TestNewRecoversPanic(t *testing.T) {
 	}
 }
 
-func TestNewSingleComponentPanic(t *testing.T) {
+func TestParallelSingleComponentPanic(t *testing.T) {
 	c := &fake{run: func(context.Context) error { panic("boom") }}
-	err := start(t, New(Mount[fakeConfig](c)), "-config=", "-env-file=")
+	err := start(t, Parallel(Mount[fakeConfig](c)), "-config=", "-env-file=")
 	if err == nil || !strings.Contains(err.Error(), "component panicked: boom") {
 		t.Fatalf("want the panic as an error, got %v", err)
 	}
 }
 
-func TestNewDropsCancelledSiblings(t *testing.T) {
+func TestParallelDropsCancelledSiblings(t *testing.T) {
 	boom := errors.New("boom")
 	failing := &fake{run: func(context.Context) error { return boom }}
 	stopped := &fake{run: func(ctx context.Context) error {
@@ -182,18 +182,18 @@ func TestNewDropsCancelledSiblings(t *testing.T) {
 		return fmt.Errorf("worker: %w", ctx.Err())
 	}}
 
-	err := start(t, New(Mount[fakeConfig](failing), Mount[fakeConfig](stopped, WithPrefix("b"))), "-config=", "-env-file=")
+	err := start(t, Parallel(Mount[fakeConfig](failing), Mount[fakeConfig](stopped, WithPrefix("b"))), "-config=", "-env-file=")
 	if !errors.Is(err, boom) || errors.Is(err, context.Canceled) {
 		t.Fatalf("want only the failing component's error, got %v", err)
 	}
 }
 
-func TestNewKeepsParentCancellation(t *testing.T) {
+func TestParallelKeepsParentCancellation(t *testing.T) {
 	stopped := func(ctx context.Context) error {
 		<-ctx.Done()
 		return ctx.Err()
 	}
-	p := New(Mount[fakeConfig](&fake{run: stopped}), Mount[fakeConfig](&fake{run: stopped}, WithPrefix("b")))
+	p := Parallel(Mount[fakeConfig](&fake{run: stopped}), Mount[fakeConfig](&fake{run: stopped}, WithPrefix("b")))
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
 	p.InitFlags(fs)
 	if err := fs.Parse([]string{"-config=", "-env-file="}); err != nil {
@@ -246,7 +246,7 @@ func TestWithLoggerReachesRuntime(t *testing.T) {
 		return WithLogger(logger.WithOutput(buf), logger.WithFormat(logger.FormatJSON))
 	}
 
-	if err := start(t, New(Mount[fakeConfig](a), jsonTo(&newBuf)), "-config=", "-env-file="); err != nil {
+	if err := start(t, Parallel(Mount[fakeConfig](a), jsonTo(&newBuf)), "-config=", "-env-file="); err != nil {
 		t.Fatal(err)
 	}
 	if err := start(t, Commands(map[string]Mounted{"beta": Mount[fakeConfig](b)}, jsonTo(&cmdBuf)), "-config=", "-env-file=", "beta"); err != nil {
@@ -256,7 +256,7 @@ func TestWithLoggerReachesRuntime(t *testing.T) {
 	for name, c := range map[string]struct {
 		f   *fake
 		buf *bytes.Buffer
-	}{"New": {a, &newBuf}, "Commands": {b, &cmdBuf}} {
+	}{"Parallel": {a, &newBuf}, "Commands": {b, &cmdBuf}} {
 		c.f.rt.Log.Debug("hello")
 		if !json.Valid(c.buf.Bytes()) || !strings.Contains(c.buf.String(), `"message":"hello"`) {
 			t.Errorf("%s: want the JSON entry in the WithLogger output at the dev default level, got %q", name, c.buf.String())

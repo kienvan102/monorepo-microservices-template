@@ -146,7 +146,7 @@ flowchart LR
   end
   APP["core/app"]
 
-  MAIN -->|"mounts the entry point:<br/>app.New / app.Commands"| APP
+  MAIN -->|"mounts the entry point:<br/>app.Parallel / app.Commands"| APP
   APP -->|"Run(ctx, Runtime, config)"| EP
   WIRE -->|"service constructor"| EP
   EP -->|calls| UC
@@ -156,9 +156,30 @@ A deployment:
 
 - **Wires** the services it uses, with google/wire or by hand.
 - **Mounts** their entry points: anything implementing `app.Component[C]` — a CLI, an HTTP server, a worker.
-- **Runs** them all together in one process (`app.New`), or one at a time chosen by command name (`app.Commands`, git-style).
+- **Runs** them all together in one process (`app.Parallel`), or one at a time chosen by command name (`app.Commands`, git-style).
+
+The two calls differ in how many entry points run each time the program starts. `app.Parallel` runs every mounted entry point at once, for example an HTTP server and a background worker in the same process; if one fails, the others are stopped. `app.Commands` runs only the entry point named on the command line, like `git commit` versus `git push`: `tool serve` starts the server, `tool job` runs the job, and the entry point you didn't name doesn't start. (`tool` in these examples stands for the deployment's executable, such as `db-analyzer`.)
 
 `core/app` handles flags, config loading, logging, signal handling, and coordinated shutdown for every deployment, so services and deployments don't implement them.
+
+Flags come from two places. The process declares `-config` and `-env-file`. Each entry point declares its own in `InitFlags(fs)`; their values go into the variables it registers (mongoanalyzer's `-action` sets a field on its handler), not into the config struct. `InitFlags` runs before the config is loaded, so a flag can't depend on a config value; the config reaches the entry point as the `cfg` argument of `Run`.
+
+`app.Parallel` puts every mounted entry point's flags on one command line, so two entry points declaring the same flag name conflict before anything runs; mount one `WithPrefix("x")` and its flags become `-x-<flag>`. `app.Commands` declares only the chosen command's flags, after the command name, so names may repeat (`WithPrefix` there affects only config), and `tool <command> -h` lists that command's flags.
+
+For example, two entry points that both declare `-action`:
+
+```bash
+# app.Parallel, no prefix: the process stops at startup with
+#   flag -action is declared more than once; mount one of the components WithPrefix
+tool -action collect
+
+# app.Parallel, second entry point mounted WithPrefix("r"): each flag has its own name
+tool -action collect -r-action daily
+
+# app.Commands, entry points named "analyze" and "report": same flag name, no conflict
+tool analyze -action collect
+tool report -action daily
+```
 
 How a service arranges its packages is up to the service. The template relies on two things: a use-case layer with plain methods over a `context.Context`, and an entry point implementing `app.Component[C]`. mongoanalyzer, for example, uses `business/`, `repository/mongodb/`, `transport/cli/`, and `settings/`.
 
@@ -186,15 +207,37 @@ How a service arranges its packages is up to the service. The template relies on
 
    | Call | Runs |
    | --- | --- |
-   | `app.New(app.Mount(entryPoint), ...)` | every mounted entry point at once |
-   | `app.Commands(map[string]app.Mounted{...})` | one, chosen by command name: `tool [shared flags] <command> [command flags]` |
+   | `app.Parallel(app.Mount(entryPoint), ...)` | every mounted entry point at once |
+   | `app.Commands(map[string]app.Mounted{...})` | one, chosen by command name |
 
    To change the log format, level, or output, pass `app.WithLogger(...)` to either.
+
+   With `app.Commands`, `main.go` looks like:
+
+   ```go
+   func main() {
+   	processor.Main(app.Commands(map[string]app.Mounted{
+   		"serve": app.Mount(httpHandler.NewHandler(InitializeHTTP)),
+   		"job":   app.Mount(jobHandler.NewHandler(InitializeJob)),
+   	}))
+   }
+   ```
+
+   Process flags come before the command, and the command's own flags come after it:
+
+   ```bash
+   tool [-config file] [-env-file file] <command> [command flags]
+
+   tool serve
+   tool -env-file .env.local job
+   ```
+
+   A missing or unknown command prints the available ones.
 4. A deployment with multiple services has them all read from one shared configuration set. Mount each service with its own prefix, `app.WithPrefix("x")`. That service then reads:
 
    - the YAML key `x:`
    - the variable `X_...`
-   - the flag `-x-...` (only with `app.New`)
+   - the flag `-x-...` (only with `app.Parallel`)
 
    Example with two services, the second mounted with `app.WithPrefix("m2")`:
 

@@ -9,7 +9,7 @@ import (
 	"github.com/kienvan102/monorepo-microservices-template/services/mongoanalyzer/transport/cli"
 )
 
-// main runs every mounted service at the same time (app.New). To add a
+// main runs every mounted service at the same time (app.Parallel). To add a
 // service, mount it on its own line with its own prefix, as in the
 // commented-out line (mongoanalyzer2 does not exist). Each added service also
 // needs, in this deployment:
@@ -21,31 +21,10 @@ import (
 // app.Commands(...) instead runs one mounted service per invocation, chosen
 // by name: db-analyzer [-config ...] [-env-file ...] <name> [flags].
 func main() {
-	processor.Main(app.New(
+	processor.Main(app.Parallel(
 		app.Mount(cli.NewHandler(Initialize)),
 		// app.WithLogger(logger.WithFormat(logger.FormatJSON)),
 		// app.Mount(cli2.NewHandler(Initialize2), app.WithPrefix("m2")),
 	))
-	// or simply: func main() { processor.Main(app.New(app.Mount(cli.NewHandler(Initialize)))) }
+	// or simply: func main() { processor.Main(app.Parallel(app.Mount(cli.NewHandler(Initialize)))) }
 }
-
-// main.go after switching to manual_wiring.go:
-
-// // main runs every mounted service at the same time (app.New). To add a
-// // service, mount it on its own line with its own prefix, as in the
-// // commented-out line (mongoanalyzer2 does not exist). Each added service also
-// // needs, in this deployment:
-// //   - manual_wiring.go: a builder for it (Initialize2), written by hand.
-// //   - go.mod: require + replace github.com/kienvan102/monorepo-microservices-template/services/mongoanalyzer2.
-// //   - config.yaml: its settings under the prefix key (m2:); .env: M2_... variables.
-// //   - Dockerfile + Dockerfile.dockerignore: copy services/mongoanalyzer2.
-// //
-// // app.Commands(...) instead runs one mounted service per invocation, chosen
-// // by name: db-analyzer [-config ...] [-env-file ...] <name> [flags].
-// func main() {
-// 	processor.Main(app.New(
-// 		app.Mount(cli.NewHandler(Initialize)), // Initialize: manual_wiring.go
-// 		// app.Mount(cli2.NewHandler(Initialize2), app.WithPrefix("m2")),
-// 	))
-// 	// or simply: func main() { processor.Main(app.New(app.Mount(cli.NewHandler(Initialize)))) }
-// }

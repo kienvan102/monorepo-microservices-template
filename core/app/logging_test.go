@@ -26,7 +26,8 @@ func TestLoggerFollowsAppEnv(t *testing.T) {
 	}
 	for _, c := range cases {
 		var buf bytes.Buffer
-		log := newLogger(c.appEnv, append(c.overrides, logger.WithOutput(&buf)))
+		s := &sources{logOpts: append(c.overrides, logger.WithOutput(&buf))}
+		log := s.newLogger(c.appEnv)
 		log.Debug("d")
 		if gotDebug := buf.Len() > 0; gotDebug != c.wantDebug {
 			t.Errorf("APP_ENV=%q, %d overrides: debug written = %v, want %v", c.appEnv, len(c.overrides), gotDebug, c.wantDebug)
